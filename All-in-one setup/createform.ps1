@@ -581,6 +581,7 @@ try {
  
         $delegatedFormGuid = $response.delegatedFormGUID
         Write-ColorOutput Green "Delegated form '$delegatedFormName' created: $delegatedFormGuid"
+        $delegatedFormCreated = $true
     } else {
         #Get delegatedFormGUID
         $delegatedFormGuid = $response.delegatedFormGUID
