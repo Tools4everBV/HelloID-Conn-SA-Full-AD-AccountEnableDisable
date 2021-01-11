@@ -4,7 +4,7 @@ This HelloID Service Automation Delegated Form provides AD account enable / disa
  1. Search and select the target AD user account
  2. Show basic AD user account attributes of selected target user
  3. Select AD user account attributes for filtering common groupmemberships
- 4. Modify the enabled state of selected target user
+ 4. Modify the enabled state of selected target AD user account
  
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
