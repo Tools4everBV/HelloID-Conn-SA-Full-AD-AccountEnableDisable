@@ -47,3 +47,6 @@ This Powershell data source runs an Active Directory query to receive the curren
 
 ### Delegated form task 'AD-user-set-enabled'
 This delegated form task will update the enabled state of the selected target AD user account according to the modifications in this form.
+
+# HelloID Docs
+The official HelloID documentation can be found at: https://docs.helloid.com/
