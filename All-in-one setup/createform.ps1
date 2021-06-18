@@ -328,7 +328,7 @@ try {
     Write-information "Account enabled: $enabled"    
     Write-output @{ enabled = $enabled }
 } catch {
-    Write-error "Error retrieving AD user [$userPrincipalName] account status. Error: $($_.Exception.Message)" -Event Error
+    Write-error "Error retrieving AD user [$userPrincipalName] account status. Error: $($_.Exception.Message)"
     return
 }
 '@ 
