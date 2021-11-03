@@ -5,7 +5,15 @@ This HelloID Service Automation Delegated Form provides AD account enable / disa
  2. Show basic AD user account attributes of selected target user
  3. Select AD user account attributes for filtering common groupmemberships
  4. Modify the enabled state of selected target AD user account
- 
+
+
+## Versioning
+| Version | Description | Date |
+| - | - | - |
+| 1.0.1   | Added version number and updated all-in-one script | 2021/11/03  |
+| 1.0.0   | Initial release | 2020/09/01  |
+
+
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
 * [Description](#description)
@@ -13,6 +21,7 @@ This HelloID Service Automation Delegated Form provides AD account enable / disa
   * [Getting started](#getting-started)
 * [Post-setup configuration](#post-setup-configuration)
 * [Manual resources](#manual-resources)
+* [Getting help](#getting-help)
 
 
 ## All-in-one PowerShell setup script
@@ -48,5 +57,8 @@ This Powershell data source runs an Active Directory query to receive the curren
 ### Delegated form task 'AD-user-set-enabled'
 This delegated form task will update the enabled state of the selected target AD user account according to the modifications in this form.
 
-# HelloID Docs
+## Getting help
+_If you need help, feel free to ask questions on our [forum](https://forum.helloid.com/forum/helloid-connectors/service-automation/506-helloid-sa-active-directory-ad-account-de-activate)_
+
+## HelloID Docs
 The official HelloID documentation can be found at: https://docs.helloid.com/
