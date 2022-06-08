@@ -5,7 +5,7 @@
 $portalUrl = "https://CUSTOMER.helloid.com"
 $apiKey = "API_KEY"
 $apiSecret = "API_SECRET"
-$delegatedFormAccessGroupNames = @("Users") #Only unique names are supported. Groups must exist!
+$delegatedFormAccessGroupNames = @() #Only unique names are supported. Groups must exist!
 $delegatedFormCategories = @("Active Directory","User Management") #Only unique names are supported. Categories will be created if not exists
 $script:debugLogging = $false #Default value: $false. If $true, the HelloID resource GUIDs will be shown in the logging
 $script:duplicateForm = $false #Default value: $false. If $true, the HelloID resource names will be changed to import a duplicate Form
@@ -20,7 +20,7 @@ $tmpName = @'
 ADusersSearchOU
 '@ 
 $tmpValue = @'
-[{ "OU": "OU=Disabled Users,OU=Users,OU=Resources,DC=schoulens,DC=nl"},{ "OU": "OU=Users,OU=Resources,DC=schoulens,DC=nl"}]
+[{ "OU": "OU=Users,OU=Resources,DC=schoulens,DC=nl"}]
 '@ 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
@@ -80,7 +80,7 @@ function Invoke-HelloIDGlobalVariable {
                 secret   = $Secret;
                 ItemType = 0;
             }    
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -122,7 +122,7 @@ function Invoke-HelloIDAutomationTask {
                 objectGuid          = $ObjectGuid;
                 variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -172,7 +172,7 @@ function Invoke-HelloIDDatasource {
                 script             = $DatasourcePsScript;
                 input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
       
             $uri = ($script:PortalBaseUrl +"api/v1/datasource")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -254,12 +254,16 @@ function Invoke-HelloIDDelegatedForm {
                 name            = $DelegatedFormName;
                 dynamicFormGUID = $DynamicFormGuid;
                 isEnabled       = "True";
-                accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
                 useFaIcon       = $UseFaIcon;
                 faIcon          = $FaIcon;
                 task            = ConvertFrom-Json -inputObject $task;
-            }    
-            $body = ConvertTo-Json -InputObject $body
+            }
+            if(-not[String]::IsNullOrEmpty($AccessGroups)) { 
+                $body += @{
+                    accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
+                }
+            }
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -429,7 +433,9 @@ foreach($group in $delegatedFormAccessGroupNames) {
         Write-Error "HelloID (access)group '$group', message: $_"
     }
 }
-$delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Compress)
+if($null -ne $delegatedFormAccessGroupGuids){
+    $delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Depth 100 -Compress)
+}
 $delegatedFormCategoryGuids = @()
 foreach($category in $delegatedFormCategories) {
     try {
@@ -444,7 +450,7 @@ foreach($category in $delegatedFormCategories) {
         $body = @{
             name = @{"en" = $category};
         }
-        $body = ConvertTo-Json -InputObject $body
+        $body = ConvertTo-Json -InputObject $body -Depth 100
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories")
         $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
         $tmpGuid = $response.delegatedFormCategoryGuid
@@ -452,7 +458,7 @@ foreach($category in $delegatedFormCategories) {
         Write-Information "HelloID Delegated Form category '$category' successfully created$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     }
 }
-$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Compress)
+$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Depth 100 -Compress)
 <# End: Delegated Form Access Groups and Categories #>
 
 <# Begin: Delegated Form #>
@@ -461,7 +467,7 @@ $delegatedFormName = @'
 AD Account - (De)Activate
 '@
 $tmpTask = @'
-{"name":"AD Account - (De)Activate","script":"$VerbosePreference = \"SilentlyContinue\"\r\n$InformationPreference = \"Continue\"\r\n$WarningPreference = \"Continue\"\r\n\r\n# variables configured in form\r\n$userPrincipalName = $form.gridUsers.UserPrincipalName\r\n$blnenabled = $form.enabled\r\n\r\ntry {\r\n    $adUser = Get-ADuser -Filter { UserPrincipalName -eq $userPrincipalName }\r\n    Write-Information \"Found AD user [$userPrincipalName]\"\r\n} catch {\r\n    Write-Error \"Could not find AD user [$userPrincipalName]. Error: $($_.Exception.Message)\"\r\n}\r\n\r\nif($blnenabled -eq 'true'){\r\n    try {\r\n    \t$enableUser = Enable-ADAccount -Identity $adUser\r\n    \t\r\n        Write-Information \"Successfully enabled AD user [$userPrincipalName]\"\r\n    } catch {\r\n        Write-Error \"Could not enable AD user [$userPrincipalName]. Error: $($_.Exception.Message)\"\r\n    }\r\n}\r\n    \r\nif($blnenabled -eq 'false'){\r\n    try {\r\n    \t$disableUser = Disable-ADAccount -Identity $adUser\r\n    \t\r\n        Write-Information \"Successfully disabled AD user [$userPrincipalName]\"\r\n    } catch {\r\n        Write-Error \"Could not disable AD user [$userPrincipalName]. Error: $($_.Exception.Message)\"\r\n    }\r\n}\r\n","runInCloud":false}
+{"name":"AD Account - (De)Activate","script":"$VerbosePreference = \"SilentlyContinue\"\r\n$InformationPreference = \"Continue\"\r\n$WarningPreference = \"Continue\"\r\n\r\n# variables configured in form\r\n$userPrincipalName = $form.gridUsers.UserPrincipalName\r\n$blnenabled = $form.enabled\r\n\r\nif($blnenabled -eq 'true'){\r\n    try {\r\n        try {\r\n            $adUser = Get-ADuser -Filter { UserPrincipalName -eq $userPrincipalName }\r\n            Write-Information \"Found AD user [$userPrincipalName]\"\r\n        } catch {\r\n            throw \"Could not find AD user [$userPrincipalName]\"\r\n        }\r\n\r\n    \t$enableUser = Enable-ADAccount -Identity $adUser\r\n    \t\r\n        Write-Information \"Successfully enabled AD user [$userPrincipalName]\"\r\n\r\n        $adUserSID = $([string]$adUser.SID)\r\n        $adUserDisplayName = $adUser.Name\r\n        $Log = @{\r\n            Action            = \"EnableAccount\" # optional. ENUM (undefined = default) \r\n            System            = \"ActiveDirectory\" # optional (free format text) \r\n            Message           = \"Enabled account with username $userPrincipalName\" # required (free format text) \r\n            IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $adUserDisplayName # optional (free format text) \r\n            TargetIdentifier  = $adUserSID # optional (free format text) \r\n        }\r\n        #send result back  \r\n        Write-Information -Tags \"Audit\" -MessageData $log\r\n    } catch {\r\n        Write-Error \"Could not enable AD user [$userPrincipalName]. Error: $($_.Exception.Message)\"\r\n\r\n        $adUserSID = $([string]$adUser.SID)\r\n        $adUserDisplayName = $adUser.Name\r\n        $Log = @{\r\n            Action            = \"EnableAccount\" # optional. ENUM (undefined = default) \r\n            System            = \"ActiveDirectory\" # optional (free format text) \r\n            Message           = \"Failed to enable account with username $userPrincipalName. Error: $($_.Exception.Message)\" # required (free format text) \r\n            IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $adUserDisplayName # optional (free format text) \r\n            TargetIdentifier  = $adUserSID # optional (free format text) \r\n        }\r\n        #send result back  \r\n        Write-Information -Tags \"Audit\" -MessageData $log\r\n    }\r\n}\r\n    \r\nif($blnenabled -eq 'false'){\r\n    try {\r\n        try {\r\n            $adUser = Get-ADuser -Filter { UserPrincipalName -eq $userPrincipalName }\r\n            Write-Information \"Found AD user [$userPrincipalName]\"\r\n        } catch {\r\n            throw \"Could not find AD user [$userPrincipalName]\"\r\n        }\r\n\r\n    \t$disableUser = Disable-ADAccount -Identity $adUser\r\n    \t\r\n        Write-Information \"Successfully disabled AD user [$userPrincipalName]\"\r\n\r\n        $adUserSID = $([string]$adUser.SID)\r\n        $adUserDisplayName = $adUser.Name\r\n        $Log = @{\r\n            Action            = \"DisableAccount\" # optional. ENUM (undefined = default) \r\n            System            = \"ActiveDirectory\" # optional (free format text) \r\n            Message           = \"Disabled account with username $userPrincipalName\" # required (free format text) \r\n            IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $adUserDisplayName # optional (free format text) \r\n            TargetIdentifier  = $adUserSID # optional (free format text) \r\n        }\r\n        #send result back\r\n        Write-Information -Tags \"Audit\" -MessageData $log\r\n    } catch {\r\n        Write-Error \"Could not disable AD user [$userPrincipalName]. Error: $($_.Exception.Message)\"\r\n\r\n        $adUserSID = $([string]$adUser.SID)\r\n        $adUserDisplayName = $adUser.Name\r\n        $Log = @{\r\n            Action            = \"DisableAccount\" # optional. ENUM (undefined = default) \r\n            System            = \"ActiveDirectory\" # optional (free format text) \r\n            Message           = \"Failed to disable account with username $userPrincipalName. Error: $($_.Exception.Message)\" # required (free format text) \r\n            IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n            TargetDisplayName = $adUserDisplayName # optional (free format text) \r\n            TargetIdentifier  = $adUserSID # optional (free format text) \r\n        }\r\n        #send result back  \r\n        Write-Information -Tags \"Audit\" -MessageData $log\r\n    }\r\n}\r\n","runInCloud":false}
 '@ 
 
 Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-unlock" -task $tmpTask -returnObject ([Ref]$delegatedFormRef) 
